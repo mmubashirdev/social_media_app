@@ -19,12 +19,6 @@ async function authenticate(req, res, next) {
     }
 
     req.user = user;
-    console.log(
-      "🔐 Middleware DEBUG: req.user set - ID:",
-      user._id,
-      "Username:",
-      user.username,
-    );
     next();
   } catch (err) {
     if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {

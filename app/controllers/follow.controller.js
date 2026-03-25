@@ -7,7 +7,7 @@ let toggleFollow = async (req, res) => {
       req.body.followerId,
       req.body.followedId,
     );
-    // Emit real-time follow update to all clients
+  
     getIO().emit("followChanged", {
       followerId: req.body.followerId,
       followedId: req.body.followedId,
@@ -20,25 +20,32 @@ let toggleFollow = async (req, res) => {
 };
 let getFollowers = async (req, res) => {
   try {
-    let result = await followService.getFollowers(req.params.userId);
+    let result = await followService.getFollowers(
+      req.params.userId,
+      req.user.id,
+    );
     res.status(200).json({
       totalFollowers: result.totalFollowers,
       followers: result.followers,
     });
   } catch (err) {
-    res.status(400).json({ err: err.message });
+    res.status(err.status || 400).json({ err: err.message });
   }
 };
 
 let getFollowing = async (req, res) => {
   try {
-    let result = await followService.getFollowing(req.params.userId);
+    let result = await followService.getFollowing(
+      req.params.userId,
+      req.user.id,
+    );
+    console.log(result);
     res.status(200).json({
       totalFollowing: result.totalFollowing,
       following: result.following,
     });
   } catch (err) {
-    res.status(400).json({ err: err.message });
+    res.status(err.status || 400).json({ err: err.message });
   }
 };
 

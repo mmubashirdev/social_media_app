@@ -1,0 +1,75 @@
+#followersSimplePopup.followers-popup {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 3000;
+  align-items: center;
+  justify-content: center;
+}
+
+#followersSimplePopup.followers-popup.show {
+  display: flex;
+}
+
+.followers-popup-dialog {
+  background: #fff;
+  border-radius: 12px;
+  max-width: 350px;
+  width: 90vw;
+  margin: auto;
+  margin-top: 10vh;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.followers-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px 8px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.followers-popup-title {
+  margin: 0;
+}
+
+.followers-popup-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.followers-popup-body {
+  padding: 16px;
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+.followers-popup-message {
+  text-align: center;
+}
+
+.followers-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.followers-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.followers-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}

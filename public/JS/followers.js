@@ -1,32 +1,26 @@
-// Handles followers/following popup logic
-
-// Popup elements (create them dynamically)
 let followersPopup = null;
 let followersPopupBody = null;
 let followersPopupLabel = null;
 let closeFollowersPopup = null;
 
+function resolveImageUrl(value, fallback = "/upload/image.png") {
+  if (!value) return fallback;
+  if (/^https?:\/\//i.test(value)) return value;
+  return `/upload/${value}`;
+}
+
 function createFollowersPopup() {
   if (document.getElementById("followersSimplePopup")) return;
   const popup = document.createElement("div");
   popup.id = "followersSimplePopup";
-  popup.style.display = "none";
-  popup.style.position = "fixed";
-  popup.style.top = 0;
-  popup.style.left = 0;
-  popup.style.width = "100vw";
-  popup.style.height = "100vh";
-  popup.style.background = "rgba(0,0,0,0.4)";
-  popup.style.zIndex = 3000;
-  popup.style.alignItems = "center";
-  popup.style.justifyContent = "center";
+  popup.className = "followers-popup";
   popup.innerHTML = `
-		<div style="background:#fff; border-radius:12px; max-width:350px; width:90vw; margin:auto; margin-top:10vh; box-shadow:0 8px 32px rgba(0,0,0,0.2);">
-			<div style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px 8px 20px; border-bottom:1px solid #eee;">
-				<h5 id="followersSimplePopupLabel" style="margin:0;">Users</h5>
-				<button id="closeFollowersSimplePopup" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+		<div class="followers-popup-dialog">
+			<div class="followers-popup-header">
+				<h5 id="followersSimplePopupLabel" class="followers-popup-title">Users</h5>
+				<button id="closeFollowersSimplePopup" class="followers-popup-close">&times;</button>
 			</div>
-			<div id="followersSimplePopupBody" style="padding:16px; max-height:350px; overflow-y:auto;"></div>
+			<div id="followersSimplePopupBody" class="followers-popup-body"></div>
 		</div>
 	`;
   document.body.appendChild(popup);
@@ -35,49 +29,47 @@ function createFollowersPopup() {
   followersPopupLabel = document.getElementById("followersSimplePopupLabel");
   closeFollowersPopup = document.getElementById("closeFollowersSimplePopup");
   closeFollowersPopup.onclick = () => {
-    followersPopup.style.display = "none";
+    followersPopup.classList.remove("show");
     followersPopupBody.innerHTML = "";
   };
 }
 
-// REMOVED: Duplicate auth check (handled by feed.js)
-// Auth only needed for API calls after popup opens
-// currentUser set globally by feed.js via window.currentUser
-
 async function showFollowersFollowing(type) {
-  const currentUser = window.currentUser; // Use global from feed.js
+  const currentUser = window.currentUser;
   if (!currentUser) {
     followersPopupBody.innerHTML =
-      '<div style="text-align:center;">Please refresh page</div>';
+      '<div class="followers-popup-message">Please refresh page</div>';
     return;
   }
   createFollowersPopup();
-  let url =
-    type === "followers"
-      ? `/follower/${currentUser._id}`
-      : `/following/${currentUser._id}`;
+  let url;
+  if (type === "followers") {
+    url = "/follower/" + currentUser._id;
+  } else {
+    url = "/following/" + currentUser._id;
+  }
   let label = type === "followers" ? "Followers" : "Following";
   followersPopupLabel.textContent = label;
   followersPopupBody.innerHTML =
-    '<div style="text-align:center;">Loading...</div>';
-  followersPopup.style.display = "flex";
+    '<div class="followers-popup-message">Loading...</div>';
+  followersPopup.classList.add("show");
   try {
     let res = await fetch(url, { credentials: "include" });
     if (res.ok) {
       let data = await res.json();
       let users = type === "followers" ? data.followers : data.following;
       if (!users || users.length === 0) {
-        followersPopupBody.innerHTML = `<div style="text-align:center;">No ${label.toLowerCase()} found.</div>`;
+        followersPopupBody.innerHTML = `<div class="followers-popup-message">No ${label.toLowerCase()} found.</div>`;
         return;
       }
-      let html = '<ul style="list-style:none; padding:0; margin:0;">';
+      let html = '<ul class="followers-list">';
       users.forEach((u) => {
         let user = type === "followers" ? u.followerId : u.followedId;
         if (!user) return;
         let isSelf = user._id === currentUser._id;
-        html += `<li style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee;">
-					<div style="display:flex; align-items:center; gap:10px;">
-						<img src="upload/${user.profilePic || "image.png"}" class="rounded-circle" width="40" height="40" alt="Profile" />
+        html += `<li class="followers-list-item">
+					<div class="followers-user-info">
+            <img src="${resolveImageUrl(user.profilePic || "image.png")}" class="rounded-circle" width="40" height="40" alt="Profile" />
 						<span>${user.username}</span>
 					</div>
 					${!isSelf ? `<button class="btn btn-sm btn-outline-primary follow-toggle-btn" data-userid="${user._id}">Follow</button>` : ""}
@@ -92,10 +84,11 @@ async function showFollowersFollowing(type) {
         });
       });
     } else {
-      followersPopupBody.innerHTML = `<div style="text-align:center;">Failed to load ${label.toLowerCase()}.</div>`;
+      followersPopupBody.innerHTML = `<div class="followers-popup-message">Failed to load ${label.toLowerCase()}.</div>`;
     }
   } catch (err) {
-    followersPopupBody.innerHTML = `<div style="text-align:center;">Error loading data.</div>`;
+    followersPopupBody.innerHTML =
+      '<div class="followers-popup-message">Error loading data.</div>';
   }
 }
 
@@ -120,7 +113,6 @@ async function toggleFollowUser(targetUserId, btn) {
   btn.disabled = false;
 }
 
-// Attach popup listeners (no auth check needed here)
 createFollowersPopup();
 const followersCountDiv = document.getElementById("followersCount");
 const followingCountDiv = document.getElementById("followingCount");

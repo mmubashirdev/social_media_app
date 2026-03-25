@@ -1,4 +1,3 @@
-// Prefill form if editing a post
 window.addEventListener("DOMContentLoaded", () => {
   const editDataRaw = localStorage.getItem("editPostData");
   const urlParams = new URLSearchParams(window.location.search);
@@ -16,9 +15,9 @@ window.addEventListener("DOMContentLoaded", () => {
     tagsInput.value = Array.isArray(editData.tags)
       ? editData.tags.join(", ")
       : "";
-    // Change button text
+
     submitBtn.textContent = "Save Changes";
-    // On submit, send PUT request to update post (with FormData for image support)
+
     form.onsubmit = async function (e) {
       e.preventDefault();
       const formData = new FormData();
@@ -37,15 +36,14 @@ window.addEventListener("DOMContentLoaded", () => {
         if (res.ok) {
           localStorage.removeItem("editPostData");
           window.location.href = "dashboard-feed.html";
-        } 
+        }
       } catch (err) {
         console.log("Error updating post");
       }
     };
-    return; // Prevent default create handler from attaching
+    return;
   }
 });
-// Handles create post form and logic
 
 let postForm = document.getElementById("postForm");
 let title = document.getElementById("title");
@@ -65,7 +63,7 @@ if (postImage && postImagePreview) {
       };
       reader.readAsDataURL(file);
     } else {
-      postImagePreview.src = "upload/image.png";
+      postImagePreview.src = "/upload/image.png";
       postImagePreview.style.display = "none";
     }
   });
@@ -122,7 +120,7 @@ if (!window.location.search.includes("edit=1")) {
       if (response.ok) {
         postForm.reset();
         if (postImagePreview) {
-          postImagePreview.src = "upload/image.png";
+          postImagePreview.src = "/upload/image.png";
           postImagePreview.style.display = "none";
         }
         window.location.href = "dashboard-feed.html";

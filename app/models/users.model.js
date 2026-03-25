@@ -16,6 +16,11 @@ const userSchema = new mongoose.Schema({
   profilePic: {
     type: String,
   },
+  visibility:{
+    type: String,
+    enum: ['public', 'private'],
+    default: "public"
+  }
 });
 
 module.exports = mongoose.model("User", userSchema);

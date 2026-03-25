@@ -1,3 +1,9 @@
+function profile(){
+  window.location.href = "edit-profile.html";
+}
+
+
+
 async function loadNotifications() {
   try {
     const res = await fetch("/notify/", { credentials: "include" });
@@ -46,6 +52,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+function resolveImageUrl(value, fallback = "/upload/image.png") {
+  if (!value) return fallback;
+  if (/^https?:\/\//i.test(value)) return value;
+  return `/upload/${value}`;
+}
+
 function deletePost(postId) {
   fetch(`/posts/${postId}`, {
     method: "DELETE",
@@ -67,11 +79,11 @@ function editPost(postId) {
   const postTitle = postCard.querySelector(".post-title")?.textContent || "";
   const postCaption =
     postCard.querySelector(".post-caption")?.textContent || "";
-  const postImage =
-    postCard
-      .querySelector(".post-image")
-      ?.getAttribute("src")
-      ?.replace("./upload/", "") || "";
+  const postImageSrc =
+    postCard.querySelector(".post-image")?.getAttribute("src") || "";
+  const postImage = postImageSrc.startsWith("/upload/")
+    ? postImageSrc.replace(/^\/upload\//, "")
+    : postImageSrc;
 
   const postTags =
     postCard
@@ -101,9 +113,9 @@ function createPostCard(post, currentUser) {
   }
   let image = "";
   if (post.img) {
-    image = `<img src="./upload/${post.img}" alt="${post.title}" class="post-image">`;
+    image = `<img src="${resolveImageUrl(post.img)}" alt="${post.title}" class="post-image">`;
   }
-  // Normalize postUserId to string for consistent comparison
+
   let postUserId = post.user?._id?.toString() || post.user?.toString() || "";
   let currentUserId =
     currentUser?._id?.toString() || currentUser?.id?.toString() || "";
@@ -125,8 +137,14 @@ function createPostCard(post, currentUser) {
     `;
   }
   let followBtn = "";
+  let chatBtn = "";
+  let authorMarkup = `<div class="post-author">${post.author}</div>`;
 
   if (currentUser && postUserId && postUserId !== currentUserId) {
+    authorMarkup = `<a class="post-author post-author-link" href="chat.html?userId=${postUserId}" title="Chat with ${post.author}">${post.author}</a>`;
+
+    chatBtn = `<a class="ms-2 btn btn-sm btn-outline-secondary" href="chat.html?userId=${postUserId}">Chat</a>`;
+
     if (post.isFollowing) {
       followBtn = `<button class="ms-2 btn btn-sm btn-primary follow-btn" data-authorid="${postUserId}">Following</button>`;
     } else {
@@ -137,10 +155,11 @@ function createPostCard(post, currentUser) {
     <article class="post-card bg-white" data-post-id="${post._id}">
       <div class="post-header d-flex justify-content-between">
         <div class="d-flex align-items-center">
-          <div class="post-avatar"> <img src="upload/${post.user && post.user.profilePic ? post.user.profilePic : "image.png"}" alt="Profile Image" class="rounded-circle" width="50" height="50" /></div>
+          <div class="post-avatar"> <img src="${resolveImageUrl(post.user && post.user.profilePic ? post.user.profilePic : "image.png")}" alt="Profile Image" class="rounded-circle" width="50" height="50" /></div>
           <div class="post-meta">
-            <div class="post-author">${post.author}</div>
+            ${authorMarkup}
           </div>
+          ${chatBtn}
           ${followBtn}
         </div>
         ${dropdown}
@@ -346,7 +365,6 @@ async function loadComments(postId) {
       });
       commentsList.innerHTML = html;
 
-      // Attach reply event listeners
       attachReplyEventListeners(postId);
     }
   } catch (error) {
@@ -355,7 +373,6 @@ async function loadComments(postId) {
   }
 }
 
-// Move outside to global scope so it can be called
 function attachReplyEventListeners(postId) {
   document.querySelectorAll(".reply-comment-btn").forEach((btn) => {
     btn.addEventListener("click", function () {

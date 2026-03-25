@@ -1,5 +1,6 @@
 let bcrypt = require("bcrypt");
 let jwt = require("jsonwebtoken");
+const { uploadImageBuffer } = require("../services/cloudinary.service");
 
 let User = require("../models/users.model");
 
@@ -64,22 +65,28 @@ let verify = async (req, res) => {
       username: req.user.username,
       email: req.user.email,
       profilePic: req.user.profilePic,
+      visibility: req.user.visibility,
     },
   });
 };
-// Update user profile
+
 let updateUser = async (req, res) => {
   try {
     const userId = req.params.id;
-    const { username, password } = req.body;
+    const { username, password, visibility } = req.body;
     let updateFields = {};
     if (username) updateFields.username = username;
     if (password) {
       const bcrypt = require("bcrypt");
       updateFields.password = await bcrypt.hash(password, 10);
     }
-    if (req.file) {
-      updateFields.profilePic = req.file.filename;
+    if (visibility) updateFields.visibility = visibility;
+    if (req.file?.buffer) {
+      const uploadResult = await uploadImageBuffer(
+        req.file.buffer,
+        "social_media_app/profile_pics",
+      );
+      updateFields.profilePic = uploadResult.secure_url;
     }
     const updatedUser = await User.findByIdAndUpdate(
       userId,
@@ -95,6 +102,7 @@ let updateUser = async (req, res) => {
         username: updatedUser.username,
         email: updatedUser.email,
         profilePic: updatedUser.profilePic,
+        visibility: updatedUser.visibility,
       },
     });
   } catch (err) {

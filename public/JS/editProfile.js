@@ -1,15 +1,19 @@
-// Handles edit profile modal and logic
-// ...existing code...
-
 const profilePicPreview = document.getElementById("profilePicPreview");
 const profilePicInput = document.getElementById("profilePicInput");
 const editUsername = document.getElementById("editUsername");
 const email = document.getElementById("email");
 const editProfileForm = document.getElementById("editProfileForm");
 const editPassword = document.getElementById("editPassword");
+const visibility = document.getElementById("visibility");
 const postNumber = document.getElementById("postNumber");
 const followersNumber = document.getElementById("followersNumber");
 const followingNumber = document.getElementById("followingNumber");
+
+function resolveImageUrl(value, fallback = "/upload/image.png") {
+  if (!value) return fallback;
+  if (/^https?:\/\//i.test(value)) return value;
+  return `/upload/${value}`;
+}
 
 let currentUser = null;
 let socket = null;
@@ -36,20 +40,18 @@ function initSocket() {
 }
 
 checkAuthAndInit(() => {
-  // Populate profile info
   if (currentUser) {
     editUsername.value = currentUser.username || "";
     email.value = currentUser.email || "";
+    visibility.value = currentUser.visibility || "public";
     if (currentUser.profilePic) {
-      profilePicPreview.src = `upload/${currentUser.profilePic}`;
+      profilePicPreview.src = resolveImageUrl(currentUser.profilePic);
     } else {
-      profilePicPreview.src = "upload/image.png";
+      profilePicPreview.src = "/upload/image.png";
     }
     updateFollowersFollowingCounts();
   }
 });
-
-// ...existing code...
 
 profilePicInput.addEventListener("change", function () {
   const file = this.files[0];
@@ -61,9 +63,9 @@ profilePicInput.addEventListener("change", function () {
     reader.readAsDataURL(file);
   } else {
     if (currentUser && currentUser.profilePic) {
-      profilePicPreview.src = `upload/${currentUser.profilePic}`;
+      profilePicPreview.src = resolveImageUrl(currentUser.profilePic);
     } else {
-      profilePicPreview.src = "upload/image.png";
+      profilePicPreview.src = "/upload/image.png";
     }
   }
 });
@@ -72,6 +74,7 @@ editProfileForm.addEventListener("submit", async function (e) {
   e.preventDefault();
   const formData = new FormData();
   formData.append("username", editUsername.value);
+  formData.append("visibility", visibility.value);
   if (profilePicInput.files[0]) {
     formData.append("profilePic", profilePicInput.files[0]);
   }
@@ -88,10 +91,11 @@ editProfileForm.addEventListener("submit", async function (e) {
       const data = await res.json();
       currentUser = data.user;
       editUsername.value = currentUser.username;
+      visibility.value = currentUser.visibility;
       if (currentUser.profilePic) {
-        profilePicPreview.src = `upload/${currentUser.profilePic}`;
+        profilePicPreview.src = resolveImageUrl(currentUser.profilePic);
       } else {
-        profilePicPreview.src = "upload/image.png";
+        profilePicPreview.src = "/upload/image.png";
       }
     }
   } catch (err) {

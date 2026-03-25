@@ -1,6 +1,7 @@
 const Follow = require("../models/follow.model");
 let Posts = require("../models/posts.model");
 let Likes = require("../models/likes.model");
+let User = require("../models/users.model");
 const { getIO } = require("../services/socket.service");
 
 async function addPost(title, caption, img, tags, author, userId) {
@@ -17,12 +18,6 @@ async function addPost(title, caption, img, tags, author, userId) {
 
 const mongoose = require("mongoose");
 async function getAllPosts(userId) {
-  console.log(
-    "🔍 Service DEBUG: getAllPosts called - userId:",
-    userId,
-    "Type:",
-    typeof userId,
-  );
   if (!userId) {
     throw new Error("Missing userId parameter");
   }
@@ -30,7 +25,7 @@ async function getAllPosts(userId) {
   let allPosts;
   try {
     allPosts = await Posts.find()
-      .populate("user", "username profilePic isPrivate")
+      .populate("user", "username profilePic visibility")
       .sort({ createdAt: -1 });
   } catch (dbErr) {
     console.error("❌ Service DEBUG: Posts.find failed:", dbErr);
@@ -48,26 +43,12 @@ async function getAllPosts(userId) {
     );
 
     let postOwner = post.user;
-    let isPrivate = postOwner?.isPrivate || false;
+    let isPrivate = postOwner?.visibility === "private";
     let postUserId = postOwner?._id?.toString();
 
     let canView = true;
     if (isPrivate && postUserId && userId.toString() !== postUserId) {
-      try {
-        const mongooseUserId = new mongoose.Types.ObjectId(userId);
-        const mongoosePostUserId = new mongoose.Types.ObjectId(postUserId);
-        let followExists = await Follow.exists({
-          followerId: mongooseUserId,
-          followedId: mongoosePostUserId,
-        });
-        canView = !!followExists;
-        console.log(
-          `🔒 Private check [${i}]: ${userId} follows ${postUserId}? ${canView}`,
-        );
-      } catch (followErr) {
-        console.error(`❌ Follow error [post ${post._id}]:`, followErr.message);
-        canView = false;
-      }
+      canView = false;
     }
 
     if (!canView) {
@@ -90,11 +71,24 @@ async function getAllPosts(userId) {
       }
 
       if (postUserId && postUserId !== userId.toString()) {
-        isFollowing = canView; // Use privacy check result
+        try {
+          const mongooseUserId = new mongoose.Types.ObjectId(userId);
+          const mongoosePostUserId = new mongoose.Types.ObjectId(postUserId);
+          let followExists = await Follow.exists({
+            followerId: mongooseUserId,
+            followedId: mongoosePostUserId,
+          });
+          isFollowing = !!followExists;
+        } catch (followErr) {
+          console.error(
+            `Follow error [post ${post._id}]:`,
+            followErr.message,
+          );
+        }
       }
     }
     let postData = post.toObject();
-    // Ensure tags is always an array for frontend compatibility
+    
     if (postData.tags && typeof postData.tags === "string") {
       postData.tags = postData.tags
         .split(",")
@@ -123,7 +117,9 @@ async function updatePost(postId, userId, title, caption, img, tags) {
   }
   post.title = title;
   post.caption = caption;
-  post.img = img;
+  if (img) {
+    post.img = img;
+  }
   post.tags = tags;
 
   await post.save();
@@ -162,7 +158,7 @@ async function toggleLikes(postId, userId) {
       user: userId,
     });
     isLiked = true;
-    // Create notification for post owner if not liking own post
+    
     const NotificationService = require("./notification.service");
     const postWithUser = await Posts.findById(postId).populate("user");
     if (
@@ -189,8 +185,21 @@ async function toggleLikes(postId, userId) {
   return { totalLikes, isLiked };
 }
 
-let postCounts = async (userId) => {
-  let totalPosts = await Posts.countDocuments({ user: userId });
+let postCounts = async (targetUserId, requesterId) => {
+  let targetUser = await User.findById(targetUserId).select("visibility");
+  if (!targetUser) {
+    throw new Error("User not found");
+  }
+
+  let isOwner =
+    requesterId && requesterId.toString() === targetUserId.toString();
+  if (targetUser.visibility === "private" && !isOwner) {
+    const err = new Error("This account is private");
+    err.status = 403;
+    throw err;
+  }
+
+  let totalPosts = await Posts.countDocuments({ user: targetUserId });
   return totalPosts;
 };
 

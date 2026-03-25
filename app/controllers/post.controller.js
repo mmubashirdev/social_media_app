@@ -1,17 +1,27 @@
 let services = require("../services/post.service");
+const { uploadImageBuffer } = require("../services/cloudinary.service");
 
 const { getIO } = require("../services/socket.service");
 let addPost = async (req, res) => {
   try {
+    let uploadedImageUrl = null;
+    if (req.file?.buffer) {
+      const uploadResult = await uploadImageBuffer(
+        req.file.buffer,
+        "social_media_app/posts",
+      );
+      uploadedImageUrl = uploadResult.secure_url;
+    }
+
     let post = await services.addPost(
       req.body.title,
       req.body.caption,
-      req.file ? req.file.filename : null,
+      uploadedImageUrl,
       req.body.tags,
       req.user.username,
       req.user.id,
     );
-    // Emit real-time new post event
+
     getIO().emit("newPost", { post });
     res.status(201).json({ message: "Post created successfully", post });
   } catch (err) {
@@ -32,11 +42,6 @@ let getAllPosts = async (req, res) => {
       return res.status(401).json({ error: "Missing user ID - unauthorized" });
     }
     let allPosts = await services.getAllPosts(req.user.id);
-    console.log(
-      "✅ Controller DEBUG: Service returned",
-      allPosts?.length || 0,
-      "posts",
-    );
     res.status(200).json(allPosts);
   } catch (err) {
     console.error("❌ Controller DEBUG: getAllPosts error:", err.message);
@@ -47,12 +52,21 @@ let getAllPosts = async (req, res) => {
 
 let updatePost = async (req, res) => {
   try {
+    let uploadedImageUrl = null;
+    if (req.file?.buffer) {
+      const uploadResult = await uploadImageBuffer(
+        req.file.buffer,
+        "social_media_app/posts",
+      );
+      uploadedImageUrl = uploadResult.secure_url;
+    }
+
     let updatedPost = await services.updatePost(
       req.params.postId,
       req.user.id,
       req.body.title,
       req.body.caption,
-      req.file ? req.file.filename : null,
+      uploadedImageUrl,
       req.body.tags,
     );
     res.status(200).json(updatedPost);
@@ -79,10 +93,10 @@ let likePost = async (req, res) => {
 };
 let postCounts = async (req, res) => {
   try {
-    let result = await services.postCounts(req.params.id);
-    res.status(200).json(result);
+    let result = await services.postCounts(req.params.id, req.user.id);
+    res.status(200).json({ totalPosts: result });
   } catch (err) {
-    res.status(400).json({ err: err.message });
+    res.status(err.status || 400).json({ err: err.message });
   }
 };
 module.exports = {
